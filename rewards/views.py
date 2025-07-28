@@ -3,6 +3,8 @@ from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from django.db.models import Sum
 from .models import Badge, UserBadge, XPTransaction
 from .serializers import BadgeSerializer, UserBadgeSerializer, XPTransactionSerializer
 
@@ -42,9 +44,9 @@ def user_stats(request):
     weekly_progress = LearningProgress.objects.filter(
         user=user, date__gte=week_start
     ).aggregate(
-        total_xp=models.Sum('xp_earned'),
-        total_time=models.Sum('study_time_minutes'),
-        total_conversations=models.Sum('conversations_count')
+        total_xp=Sum('xp_earned'),
+        total_time=Sum('study_time_minutes'),
+        total_conversations=Sum('conversations_count')
     )
     
     stats = {

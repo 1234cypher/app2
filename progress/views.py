@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, Count, Q
 from .models import LearningProgress, Vocabulary
 from .serializers import LearningProgressSerializer, VocabularySerializer
 
@@ -50,8 +50,8 @@ def dashboard_stats(request):
     
     # Get vocabulary stats
     vocabulary_stats = Vocabulary.objects.filter(user=user).aggregate(
-        total_words=models.Count('id'),
-        mastered_words=models.Count('id', filter=models.Q(times_correct__gte=5))
+        total_words=Count('id'),
+        mastered_words=Count('id', filter=Q(times_correct__gte=5))
     )
     
     # Get weekly progress for chart

@@ -1,0 +1,230 @@
+<!-- templates/dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tableau de bord - LinguaChat AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h2 class="mb-1">Bonjour, {{ user.get_full_name|default:user.username }} ! 👋</h2>
+                            <p class="mb-0">Prêt à continuer votre apprentissage du {{ user.get_target_language_display }} ?</p>
+                        </div>
+                        <div class="col-auto">
+                            <div class="text-center">
+                                <div class="h3 mb-0">{{ user.current_streak }}</div>
+                                <small>jours de suite</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">XP Total</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ user.total_xp }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-star fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Conversations</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_conversations }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-comments fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Série actuelle</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ user.current_streak }} jours</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-fire fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Badges</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.badges_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-trophy fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Progression hebdomadaire</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Niveau actuel</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="h2 text-primary">{{ user.current_level }}</div>
+                        <p class="text-muted">{{ user.get_current_level_display }}</p>
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <small class="text-muted">65% vers le niveau suivant</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Daily Challenges -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Actions rapides</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'new_conversation' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus me-2"></i>Nouvelle conversation
+                        </a>
+                        <a href="{% url 'daily-challenges' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-trophy me-2"></i>Voir les défis du jour
+                        </a>
+                        <a href="{% url 'vocabulary' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-book me-2"></i>Réviser le vocabulaire
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Défis du jour</h6>
+                </div>
+                <div class="card-body">
+                    {% for challenge in daily_challenges %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-trophy text-warning"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ challenge.challenge.title }}</h6>
+                                <small class="text-muted">{{ challenge.challenge.description }}</small>
+                                <div class="progress mt-1" style="height: 5px;">
+                                    <div class="progress-bar" style="width: {{ challenge.progress }}%"></div>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <span class="badge bg-primary">{{ challenge.challenge.xp_reward }} XP</span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted text-center">Aucun défi disponible pour aujourd'hui.</p>
+                        <div class="text-center">
+                            <a href="{% url 'assign-challenges' %}" class="btn btn-outline-primary btn-sm">
+                                Obtenir des défis
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Weekly Progress Chart
+const ctx = document.getElementById('weeklyChart').getContext('2d');
+const weeklyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ weekly_labels|safe }},
+        datasets: [{
+            label: 'XP gagnés',
+            data: {{ weekly_xp|safe }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }, {
+            label: 'Temps d\'étude (min)',
+            data: {{ weekly_time|safe }},
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'Progression de la semaine'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,3 +1,4 @@
+# conversations/views.py
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -5,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
-#from services.ai_service import AIConversationService
-#from services.translation_service import TranslationService
+from services.ai_service import AIConversationService
+from services.translation_service import TranslationService
 from services.speech_service import SpeechService
 from services.gamification_service import GamificationService
 
