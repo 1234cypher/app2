@@ -1,0 +1,63 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - media_volume:/app/media
+    environment:
+      - DEBUG=1
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    command: python manage.py runserver 0.0.0.0:8000
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=linguachat
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: .
+    command: celery -A linguachat worker -l info
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  celery-beat:
+    build: .
+    command: celery -A linguachat beat -l info
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=1
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
+  media_volume:
