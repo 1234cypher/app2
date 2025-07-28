@@ -1,0 +1,40 @@
+<!-- templates/accounts/profile.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mon profil - LinguaChat AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Profile Info -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <div class="profile-avatar mb-3">
+                        {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" class="rounded-circle" width="120" height="120">
+                        {% else %}
+                            <div class="avatar-placeholder">
+                                <i class="fas fa-user fa-4x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-primary mt-2" id="changeAvatar">
+                            Changer la photo
+                        </button>
+                        <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+                    </div>
+                    
+                    <h4>{{ user.get_full_name|default:user.username }}</h4>
+                    <p class="text-muted">{{ user.email }}</p>
+                    
+                    <div class="profile-stats">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-value">{{ user.total_xp }}</div>
+                                <div class="stat-label">XP</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-# LinguaChat AI - Templates Django value">{{ user.current_streak }} jours</div>
+                                <div class="stat-label">Série</div>
+                            </div>  

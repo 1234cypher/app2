@@ -1,0 +1,108 @@
+<!-- templates/conversations/list.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mes conversations - LinguaChat AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Mes conversations</h1>
+        <a href="{% url 'new_conversation' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-plus me-2"></i>Nouvelle conversation
+        </a>
+    </div>
+
+    <div class="row">
+        {% for conversation in conversations %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card shadow h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            {{ conversation.title|default:"Conversation sans titre" }}
+                        </h6>
+                        <span class="badge bg-{{ conversation.status|yesno:'success,warning,secondary' }}">
+                            {{ conversation.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>{{ conversation.started_at|date:"d M Y à H:i" }}
+                            </small>
+                        </p>
+                        <p class="card-text">
+                            <i class="fas fa-comments me-1"></i>{{ conversation.messages.count }} messages
+                        </p>
+                        <p class="card-text">
+                            <i class="fas fa-clock me-1"></i>{{ conversation.duration_seconds|floatformat:0 }}s
+                        </p>
+                        {% if conversation.xp_earned %}
+                            <p class="card-text">
+                                <i class="fas fa-star me-1 text-warning"></i>{{ conversation.xp_earned }} XP gagnés
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'conversation_detail' conversation.id %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye me-1"></i>Voir
+                            </a>
+                            {% if conversation.status == 'active' %}
+                                <a href="{% url 'conversation_chat' conversation.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-play me-1"></i>Continuer
+                                </a>
+                            {% endif %}
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'conversation_export' conversation.id %}">
+                                        <i class="fas fa-download me-2"></i>Exporter
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="{% url 'conversation_delete' conversation.id %}">
+                                        <i class="fas fa-trash me-2"></i>Supprimer
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                    <h4>Aucune conversation</h4>
+                    <p class="text-muted">Commencez votre première conversation dès maintenant !</p>
+                    <a href="{% url 'new_conversation' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Commencer
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+        <nav aria-label="Pagination des conversations">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo; première</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">précédente</a></li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">suivante</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">dernière &raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}

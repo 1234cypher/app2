@@ -1,0 +1,309 @@
+<!-- templates/conversations/chat.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Conversation - LinguaChat AI{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/chat.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">{{ conversation.title|default:"Nouvelle conversation" }}</h5>
+                <small class="text-muted">{{ conversation.started_at|date:"d M Y à H:i" }}</small>
+            </div>
+            <div class="chat-controls">
+                <button id="voiceToggle" class="btn btn-outline-primary btn-sm me-2">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="settingsBtn" class="btn btn-outline-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button id="endChat" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-stop"></i> Terminer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        {% for message in conversation.messages.all %}
+            <div class="message message-{{ message.message_type }}">
+                <div class="message-content">
+                    <div class="message-text">{{ message.original_text }}</div>
+                    {% if message.translated_text %}
+                        <div class="message-translation">{{ message.translated_text }}</div>
+                    {% endif %}
+                    {% if message.audio_file %}
+                        <audio controls class="message-audio">
+                            <source src="{{ message.audio_file.url }}" type="audio/mpeg">
+                        </audio>
+                    {% endif %}
+                </div>
+                <div class="message-time">{{ message.timestamp|date:"H:i" }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="chat-input">
+        <div class="input-group">
+            <input type="text" id="messageInput" class="form-control" placeholder="Tapez votre message..." disabled>
+            <button id="sendBtn" class="btn btn-primary" disabled>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div class="voice-recording d-none" id="voiceRecording">
+            <div class="recording-indicator">
+                <i class="fas fa-microphone text-danger"></i>
+                <span>Enregistrement en cours...</span>
+                <button id="stopRecording" class="btn btn-sm btn-danger ms-2">Arrêter</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="typing-indicator d-none" id="typingIndicator">
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        L'IA réfléchit...
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal fade" id="settingsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Paramètres de conversation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="translationToggle" class="form-label">Traduction automatique</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="translationToggle" checked>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="voiceSpeed" class="form-label">Vitesse de la voix</label>
+                    <input type="range" class="form-range" id="voiceSpeed" min="0.5" max="2" step="0.1" value="1">
+                    <small class="text-muted">Vitesse: <span id="speedValue">1.0</span>x</small>
+                </div>
+                <div class="mb-3">
+                    <label for="conversationTopic" class="form-label">Sujet de conversation</label>
+                    <input type="text" class="form-control" id="conversationTopic" placeholder="Ex: Voyage, Cuisine, Sport...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" id="saveSettings">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const conversationId = {{ conversation.id }};
+const chatSocket = new WebSocket(`ws://${window.location.host}/ws/conversation/${conversationId}/`);
+let isRecording = false;
+let mediaRecorder;
+let audioChunks = [];
+
+// WebSocket event handlers
+chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    
+    if (data.type === 'chat_message') {
+        addMessage(data.user_message, 'user');
+        addMessage(data.ai_message, 'ai');
+        hideTypingIndicator();
+    } else if (data.type === 'typing_indicator') {
+        if (data.is_typing) {
+            showTypingIndicator();
+        } else {
+            hideTypingIndicator();
+        }
+    }
+};
+
+// Send message function
+function sendMessage(message, isVoice = false) {
+    if (!message.trim()) return;
+    
+    showTypingIndicator();
+    
+    chatSocket.send(JSON.stringify({
+        'type': 'chat_message',
+        'message': message,
+        'is_voice': isVoice
+    }));
+    
+    document.getElementById('messageInput').value = '';
+}
+
+// Add message to chat
+function addMessage(messageData, type) {
+    const messagesContainer = document.getElementById('chatMessages');
+    const messageElement = document.createElement('div');
+    messageElement.className = `message message-${type}`;
+    
+    messageElement.innerHTML = `
+        <div class="message-content">
+            <div class="message-text">${messageData.text}</div>
+            ${messageData.translation ? `<div class="message-translation">${messageData.translation}</div>` : ''}
+            ${messageData.audio ? `<audio controls class="message-audio"><source src="${messageData.audio}" type="audio/mpeg"></audio>` : ''}
+        </div>
+        <div class="message-time">${new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}</div>
+    `;
+    
+    messagesContainer.appendChild(messageElement);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Typing indicator
+function showTypingIndicator() {
+    document.getElementById('typingIndicator').classList.remove('d-none');
+}
+
+function hideTypingIndicator() {
+    document.getElementById('typingIndicator').classList.add('d-none');
+}
+
+// Voice recording
+document.getElementById('voiceToggle').addEventListener('click', async function() {
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                // Send audio to server for processing
+                sendAudioMessage(audioBlob);
+            };
+            
+            mediaRecorder.start();
+            isRecording = true;
+            
+            document.getElementById('voiceRecording').classList.remove('d-none');
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+            
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            alert('Impossible d\'accéder au microphone');
+        }
+    }
+});
+
+document.getElementById('stopRecording').addEventListener('click', function() {
+    if (isRecording && mediaRecorder) {
+        mediaRecorder.stop();
+        isRecording = false;
+        
+        document.getElementById('voiceRecording').classList.add('d-none');
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+    }
+});
+
+// Send audio message
+function sendAudioMessage(audioBlob) {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.wav');
+    
+    fetch(`/api/conversations/${conversationId}/message/`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Token ${localStorage.getItem('token')}`,
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        addMessage(data.user_message, 'user');
+        addMessage(data.ai_message, 'ai');
+    })
+    .catch(error => {
+        console.error('Error sending audio:', error);
+    });
+}
+
+// Text input handlers
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage(this.value);
+    }
+});
+
+document.getElementById('sendBtn').addEventListener('click', function() {
+    const input = document.getElementById('messageInput');
+    sendMessage(input.value);
+});
+
+// Settings
+document.getElementById('voiceSpeed').addEventListener('input', function() {
+    document.getElementById('speedValue').textContent = this.value;
+});
+
+document.getElementById('saveSettings').addEventListener('click', function() {
+    const settings = {
+        translation: document.getElementById('translationToggle').checked,
+        voiceSpeed: document.getElementById('voiceSpeed').value,
+        topic: document.getElementById('conversationTopic').value
+    };
+    
+    // Save settings to server
+    fetch('/api/accounts/preferences/', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${localStorage.getItem('token')}`,
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(settings)
+    });
+    
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+});
+
+// End chat
+document.getElementById('endChat').addEventListener('click', function() {
+    if (confirm('Êtes-vous sûr de vouloir terminer cette conversation ?')) {
+        fetch(`/api/conversations/${conversationId}/complete/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${localStorage.getItem('token')}`,
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                duration: Math.floor((Date.now() - startTime) / 1000)
+            })
+        })
+        .then(() => {
+            window.location.href = '/conversations/';
+        });
+    }
+});
+
+// Initialize
+const startTime = Date.now();
+document.getElementById('messageInput').disabled = false;
+document.getElementById('sendBtn').disabled = false;
+</script>
+{% endblock %}
